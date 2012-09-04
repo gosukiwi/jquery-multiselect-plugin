@@ -11,12 +11,15 @@
     'Confirm': 'Confirm'
   },
 
+  settings,
+
   // plugin methods
   methods = {
     init: function(options) {
 
-      var settings = $.extend({
-        'LANG' : LANG
+      settings = $.extend({
+        'LANG' : LANG,
+        'inputSeparator': ','
       }, options);
 
       return this.each(function(index, element) {
@@ -25,8 +28,12 @@
           $.error('jQuery.multipleSelect can only be used on <select /> elements.');
         }
 
-        var items = [],
-        i, container, btn;
+        var items = [], cb, para,
+        i, container, btn, originalName;
+
+        // Rename
+        originalName = $(element).attr('name');
+        $(element).attr('name', originalName + '-jquery-multiselect');
 
         // Find all option elements and store them
         $(element).find('option').each(function(index, elem){
@@ -41,13 +48,23 @@
         // Append html
         container = $('<div class="multiple-select-container"></div>');
         for(i = 0; i < items.length; i++) {
-          container.append('<p><input type="checkbox" value="' + items[i].value + '" /> ' + items[i].name + '</p>');
+          // create html elements
+          para = $('<p></p>');
+          cb = $('<input type="checkbox" value="' + items[i].value + '" />');
+
+          cb.bind('click.multiselect', methods.inputClicked);
+
+          // create paragraph content
+          para.append(cb).append(' ' + items[i].name);
+
+          // append to container
+          container.append(para);
         }
 
         btn = $('<input type="button" value="' + settings.LANG.Confirm + '" />');
         btn.bind('click.multipleselect', methods.confirmClicked);
 
-        container.append(btn).hide();
+        container.append(btn).append('<input type="hidden" name="' + originalName + '" value="" />').hide();
         $(element).after(container);
       });
     },
@@ -58,6 +75,20 @@
     },
 
     // custom methods
+
+    inputClicked: function() {
+      // Update the value of the hidden input
+      var container = $(this).parent().parent(),
+      values = [];
+
+      // find all checked inputs in the container, and add the value
+      container.find('input:checked').each(function(index, item) {
+        values.push($(item).val());
+      });
+
+      // finally update the content
+      container.find('input[type=hidden]').val(values.join(settings.inputSeparator));
+    },
 
     selectClicked: function(e) {
       // get the checkbox container
@@ -75,16 +106,7 @@
     },
 
     values: function() {
-      var container = this.next(),
-      values = [];
-
-      // find all checked inputs in the container, and add the value
-      container.find('input:checked').each(function(index, item){
-        values.push($(item).val());
-      });
-
-      // finally return all values
-      return values;
+      return this.next().find('input[type=hidden]').val();
     }
   };
 
